@@ -93,14 +93,19 @@ void DMJ4310_CTRL::UpdateInfoEncoder(const uint8_t *rx_data)
 
 /**
  * @brief  更新电机控制目标值
- * @param  pos:     目标位置（单位：rad）
- * @param  vel:     目标速度（单位：rad/s）
- * @param  KP:      位置环增益（单位：N/r）
- * @param  KD:      速度环增益（单位：Ns/r）
- * @param  torq:    目标转矩（单位：Nm）
- * @note   将目标值保存到对象内部，用于后续MIT控制器发送
+ *
+ * @param[in] pos     目标位置（单位：rad）
+ * @param[in] vel     目标速度（单位：rad/s）
+ * @param[in] KP      位置环增益（单位：N/r）
+ * @param[in] KD      速度环增益（单位：Ns/r）
+ * @param[in] torq    目标转矩（单位：Nm）
+ *
+ * @note   该函数仅保存目标值到成员变量中，不发送控制指令；
+ *         后续调用 MITController() 函数时将使用这些值进行控制。
+ *
  * @retval None
  */
+
 void DMJ4310_CTRL::UpdateInfoTarget(float pos, float vel, float KP, float KD, float torq)
 {
     target_pos_ = pos;
