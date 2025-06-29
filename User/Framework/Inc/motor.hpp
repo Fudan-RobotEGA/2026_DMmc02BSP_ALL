@@ -36,6 +36,7 @@ constexpr float MIT_KP_MAX = 500.0f;
 constexpr float MIT_KD_MIN = 0.0f;
 constexpr float MIT_KD_MAX = 5.0f;
 
+enum class DMJ4310Command : uint8_t;
 // =============================== 函数声明 ===============================
 float Uint2Float_ForDMJ4310(int x_int, float x_min, float x_max, int bits);
 int Float2Uint_ForDMJ4310(float x, float x_min, float x_max, int bits);
@@ -64,7 +65,7 @@ public:
 
     void UpdateInfoEncoder(const uint8_t *rx_data);
     void UpdateInfoTarget(float pos, float vel, float KP, float KD, float torq);
-    bool SendControlCommand(const char *cmd_name);
+    bool SendControlCommand(DMJ4310Command cmd);
     bool MITController();
     void Print() const;
 
@@ -98,13 +99,19 @@ private:
     float target_torq_;
 };
 
+enum class DMJ4310Command : uint8_t
+{
+    ENABLE = 0xFC,
+    DISABLE = 0xFD
+};
 
-typedef enum
+enum class DMJ4310CtrlMode : uint16_t
 {
     MIT = 0x000,
     PV  = 0x100,
     V   = 0x200
-}DMJ4310_CTRL_Mode;
+};
+
 
 extern DMJ4310_CTRL DMJ4310_M1;
 extern DMJ4310_CTRL DMJ4310_M2;

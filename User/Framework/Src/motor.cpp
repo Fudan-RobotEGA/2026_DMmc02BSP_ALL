@@ -111,34 +111,23 @@ void DMJ4310_CTRL::UpdateInfoTarget(float pos, float vel, float KP, float KD, fl
 }
 
 /**
- * @brief  发送电机的控制命令（启用/失能）
- * @param  cmd_name: 控制命令字符串，支持 "ENABLE" 或 "DISABLE"
- * @note   函数通过 CAN 总线向电机发送控制指令，若目标状态与预期不一致，则重复发送直到状态匹配或超时。
- *         - "ENABLE" 指令期望电机的错误状态变为1。
- *         - "DISABLE" 指令期望电机的错误状态变为0。
- *         - 若CAN通信失败或超时，函数返回false。
- * @retval bool:
- *         - true: 命令发送成功且目标状态匹配
- *         - false: 发送失败或超时未达到目标状态
+ * @brief  向电机发送控制指令（如启用或失能）
+ * @param  cmd 控制命令类型（DMJ4310Command::ENABLE 或 DISABLE）
+ * @note
+ * - 该函数通过 CAN 总线向电机发送 8 字节控制帧，帧尾携带指令字节。
+ * - 命令发送后，函数将轮询电机状态（通过 getError()）判断是否达到目标状态：
+ *   - ENABLE 期望 error 状态变为 1；
+ *   - DISABLE 期望 error 状态变为 0。
+ * - 在发送失败或超过最大重试次数前，最多尝试 1000 次，每次延时 1ms。
+ * @retval true  控制命令发送成功，且目标状态达到预期
+ * @retval false 发送失败，或超时仍未达到目标状态
  */
-bool DMJ4310_CTRL::SendControlCommand(const char *cmd_name)
+bool DMJ4310_CTRL::SendControlCommand(DMJ4310Command cmd)
 {
     if (fdcan_ == nullptr) return false;
 
-    uint8_t cmd_byte = 0x00;
-    uint8_t target_err = 0;
-
-    if (strcmp(cmd_name, "ENABLE") == 0)
-    {
-        cmd_byte = 0xFC;
-        target_err = 1;
-    }
-    else if (strcmp(cmd_name, "DISABLE") == 0)
-    {
-        cmd_byte = 0xFD;
-        target_err = 0;
-    }
-    else return false;
+    uint8_t cmd_byte = static_cast<uint8_t>(cmd);
+    uint8_t target_err = (cmd == DMJ4310Command::ENABLE) ? 1 : 0;
 
     uint8_t tx_data[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, cmd_byte};
 
@@ -158,14 +147,15 @@ bool DMJ4310_CTRL::SendControlCommand(const char *cmd_name)
 
     while (getError() != target_err && retry_count < max_retry)
     {
-        if (HAL_FDCAN_AddMessageToTxFifoQ(fdcan_, &txHeader, tx_data) != HAL_OK) return false;
+        if (HAL_FDCAN_AddMessageToTxFifoQ(fdcan_, &txHeader, tx_data) != HAL_OK)
+            return false;
         HAL_Delay(1);
         retry_count++;
     }
 
-    if (getError() == target_err) return true;
-    else return false;
+    return getError() == target_err;
 }
+
 
 /**
  * @brief  发送MIT模式的电机控制指令
@@ -196,7 +186,7 @@ bool DMJ4310_CTRL::MITController()
     tx_data[7] = torq_int & 0xFF;
 
     FDCAN_TxHeaderTypeDef txHeader;
-    txHeader.Identifier = can_id_send_ + MIT;
+    txHeader.Identifier = can_id_send_ + (uint16_t)DMJ4310CtrlMode::MIT;
     txHeader.IdType = FDCAN_STANDARD_ID;
     txHeader.TxFrameType = FDCAN_DATA_FRAME;
     txHeader.DataLength = FDCAN_DLC_BYTES_8;

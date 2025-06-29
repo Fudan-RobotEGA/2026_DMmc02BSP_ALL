@@ -52,7 +52,7 @@ void Task1(void *pv)
     float kp = 0;
     float kd = 0.6;
     float torq_tar = 0;
-    if (DMJ4310_M1.SendControlCommand("ENABLE") != true)
+    if (DMJ4310_M1.SendControlCommand(DMJ4310Command::ENABLE) != true)
     {
         usart_printf("Send Control Command failed\r\n");
     };
